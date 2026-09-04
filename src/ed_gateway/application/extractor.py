@@ -394,6 +394,14 @@ class ResponseExtractor:
             is_positive = isinstance(normalized_value, dict) and normalized_value.get("present") is True
             if status != FieldStatus.CONFIRMED or not is_current or not is_positive:
                 return None
+        elif expected_field == "respondent.type":
+            if status == FieldStatus.CONFIRMED and (
+                not isinstance(normalized_value, str)
+                or normalized_value.strip().upper() not in {RespondentType.PATIENT, RespondentType.CAREGIVER}
+            ):
+                return None
+            if isinstance(normalized_value, str):
+                normalized_value = normalized_value.strip().upper()
         elif status == FieldStatus.CONFIRMED and normalized_value is None:
             return None
 
