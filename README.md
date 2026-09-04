@@ -59,6 +59,8 @@ ED_GATEWAY_BASE_URL=http://127.0.0.1:8001 \
 UV_CACHE_DIR=/tmp/ed-gateway-uv-cache uv run pytest -m smoke
 ```
 
+For manual validation and a feedback template, use the [synthetic live-validation checklist](docs/live-validation-checklist.md). Keep mock-functional, live-provider, clinical, and production evidence explicitly separate.
+
 ## Migrations
 
 The API startup command runs `alembic upgrade head` after PostgreSQL becomes healthy. Manual commands:
