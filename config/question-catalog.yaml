@@ -1,0 +1,238 @@
+version: "1.0.0"
+questions:
+  - id: respondent_type
+    target_field: respondent.type
+    wording: 現在操作的是病人本人，還是家屬或陪同者？
+    answer_type: choice
+    required: true
+    phase: RESPONDENT
+    clarification_wording: 請回答「病人本人」或「家屬／陪同者」。
+  - id: age
+    target_field: demographics.age
+    wording: 請問病人今年幾歲？（可回覆「跳過」或「不知道」）
+    answer_type: integer
+    required: true
+    phase: AGE
+    clarification_wording: 請提供病人的年齡數字；若不清楚可回答「不知道」。
+  - id: safety_cardiovascular
+    target_field: safety.cardiovascular
+    wording: 現在有胸口痛、胸悶，或胸部不適合併冒冷汗、想吐、喘嗎？
+    answer_type: safety_boolean
+    required: true
+    phase: SAFETY_SCREEN
+    safety_relevance: WARN-CARDIOVASCULAR
+    clarification_wording: 請確認現在有沒有胸痛或胸悶；不確定時請立即告訴現場護理師。
+  - id: safety_neurological
+    target_field: safety.neurological
+    wording: 現在或最近有突然臉歪、單側手腳無力或麻木、說話不清、看不清、站不穩、劇烈頭痛、抽搐、昏倒或意識改變嗎？
+    answer_type: safety_boolean
+    required: true
+    phase: SAFETY_SCREEN
+    safety_relevance: WARN-NEUROLOGICAL
+    clarification_wording: 請確認現在或最近有沒有剛才列出的任何一項神經警訊；不確定時請立即告訴現場護理師。
+  - id: safety_respiratory
+    target_field: safety.respiratory
+    wording: 現在會喘到說不完整一句話、嘴唇發紫、明顯喘鳴，或覺得喉嚨被塞住嗎？
+    answer_type: safety_boolean
+    required: true
+    phase: SAFETY_SCREEN
+    safety_relevance: WARN-RESPIRATORY
+    clarification_wording: 請確認現在有沒有嚴重喘、嘴唇發紫或呼吸道像被塞住。
+  - id: safety_circulation
+    target_field: safety.circulation
+    wording: 現在有皮膚冰冷蒼白、一直冒冷汗、站起來快昏倒，或心悸合併全身無力嗎？
+    answer_type: safety_boolean
+    required: true
+    phase: SAFETY_SCREEN
+    safety_relevance: WARN-CIRCULATION
+    clarification_wording: 請確認現在有沒有剛才列出的循環警訊。
+  - id: safety_bleeding
+    target_field: safety.bleeding
+    wording: 現在有壓不住的出血、大量陰道出血、吐血、黑便或大量血便嗎？
+    answer_type: safety_boolean
+    required: true
+    phase: SAFETY_SCREEN
+    safety_relevance: WARN-BLEEDING
+    clarification_wording: 請確認現在有沒有任何止不住或大量的出血。
+  - id: safety_allergy
+    target_field: safety.allergy
+    wording: 吃藥、打針、吃東西或被咬螫後，有全身疹子、嘴唇喉嚨腫、呼吸困難或頭暈嗎？
+    answer_type: safety_boolean
+    required: true
+    phase: SAFETY_SCREEN
+    safety_relevance: WARN-ALLERGY
+    clarification_wording: 請確認最近接觸後有沒有全身過敏或呼吸困難。
+  - id: safety_infection_temperature
+    target_field: safety.infection_temperature
+    wording: 有發燒並且意識不清、很喘、血壓低，或免疫功能較弱時發燒嗎？也有受寒後發抖或意識不清嗎？
+    answer_type: safety_boolean
+    required: true
+    phase: SAFETY_SCREEN
+    safety_relevance: WARN-INFECTION-TEMPERATURE
+    clarification_wording: 請確認有沒有發燒合併明顯不適，或受寒後意識不清。
+  - id: safety_severe_pain
+    target_field: safety.severe_pain
+    wording: 現在頭、胸、肚子、眼睛或睪丸有八分以上劇痛，或突然且持續不緩解的腹痛嗎？
+    answer_type: safety_boolean
+    required: true
+    phase: SAFETY_SCREEN
+    safety_relevance: WARN-SEVERE-PAIN
+    clarification_wording: 請確認現在有沒有八分以上劇痛或突然持續腹痛。
+  - id: safety_trauma
+    target_field: safety.trauma
+    wording: 這次有高速撞擊、翻車、被甩出或受困、高處墜落、穿刺／槍傷、嚴重頭部撞擊，或懷孕中受傷嗎？
+    answer_type: safety_boolean
+    required: true
+    phase: SAFETY_SCREEN
+    safety_relevance: WARN-TRAUMA
+    clarification_wording: 請確認這次是否有剛才列出的高風險受傷情形。
+  - id: safety_hypertensive
+    target_field: safety.hypertensive
+    wording: 有量到非常高的血壓，並同時胸痛、喘、頭痛、眩暈、噁心或嘔吐嗎？
+    answer_type: safety_boolean
+    required: true
+    phase: SAFETY_SCREEN
+    safety_relevance: WARN-HYPERTENSIVE
+    clarification_wording: 請確認是否有實際量到非常高的血壓，且同時有剛才列出的不適。
+  - id: safety_mental_health
+    target_field: safety.mental_health
+    wording: 最近有想傷害自己、傷害別人，或極度不安到無法冷靜嗎？
+    answer_type: safety_boolean
+    required: true
+    phase: SAFETY_SCREEN
+    safety_relevance: WARN-MENTAL-HEALTH
+    clarification_wording: 這題關係安全；若不方便回答，請立即請現場護理師協助。
+  - id: safety_self_identified_danger
+    target_field: safety.self_identified_danger
+    wording: 病人或陪同者現在是否覺得情況很危險、快撐不住或快不行了？
+    answer_type: safety_boolean
+    required: true
+    phase: SAFETY_SCREEN
+    safety_relevance: WARN-SELF-IDENTIFIED-DANGER
+    clarification_wording: 請確認現在是否覺得情況危險或快撐不住。
+  - id: chief_complaint
+    target_field: symptom.chief_complaint
+    wording: 請用自己的話告訴我，今天主要是哪裡不舒服？
+    answer_type: free_text
+    required: true
+    phase: SYMPTOM_COLLECTION
+  - id: symptom_onset
+    target_field: symptom.onset
+    wording: 這個不舒服是什麼時候開始的？若知道，請提供日期與大約時間。
+    answer_type: free_text
+    required: true
+    phase: SYMPTOM_COLLECTION
+  - id: symptom_location
+    target_field: symptom.location
+    wording: 不舒服的位置在哪裡？請說明左右側，以及會不會延伸到其他地方。
+    answer_type: free_text
+    required: true
+    phase: SYMPTOM_COLLECTION
+  - id: symptom_quality
+    target_field: symptom.quality
+    wording: 這個不舒服是什麼感覺？例如悶、刺、轉動感，請用自己的話描述。
+    answer_type: free_text
+    required: true
+    phase: SYMPTOM_COLLECTION
+  - id: symptom_severity
+    target_field: symptom.severity
+    wording: 若有疼痛，完全不痛是 0 分、最痛是 10 分，現在幾分？沒有疼痛也請說明。
+    answer_type: severity
+    required: true
+    phase: SYMPTOM_COLLECTION
+  - id: symptom_course
+    target_field: symptom.course
+    wording: 症狀是突然或逐漸開始？目前持續存在，還是斷斷續續？
+    answer_type: free_text
+    required: true
+    phase: SYMPTOM_COLLECTION
+  - id: symptom_associated
+    target_field: symptom.associated
+    wording: 除了主要不舒服，現在還有其他伴隨症狀嗎？
+    answer_type: free_text
+    required: true
+    phase: SYMPTOM_COLLECTION
+  - id: symptom_trauma
+    target_field: symptom.trauma_context
+    wording: 這次不舒服之前有跌倒、撞到、搬重物或其他受傷情形嗎？
+    answer_type: free_text
+    required: true
+    phase: SYMPTOM_COLLECTION
+  - id: symptom_function
+    target_field: symptom.functional_impact
+    wording: 現在能自己吃東西、上廁所和走路嗎？哪一項需要別人協助？
+    answer_type: free_text
+    required: true
+    phase: SYMPTOM_COLLECTION
+  - id: arrival_source
+    target_field: arrival.source
+    wording: 請問是自己來、119／民間救護車送來，還是由其他院所轉來？
+    answer_type: free_text
+    required: false
+    phase: SYMPTOM_COLLECTION
+  - id: medical_history
+    target_field: medical.history
+    wording: 有哪些過去病史、住院或手術經驗？沒有也請說明。
+    answer_type: free_text
+    required: false
+    phase: SYMPTOM_COLLECTION
+  - id: medications
+    target_field: medications.current
+    wording: 目前固定使用哪些藥物、中藥或保健品？
+    answer_type: free_text
+    required: false
+    phase: SYMPTOM_COLLECTION
+  - id: allergies
+    target_field: allergies
+    wording: 吃藥、打針或食物曾經過敏嗎？若有，請說明反應。
+    answer_type: free_text
+    required: false
+    phase: SYMPTOM_COLLECTION
+  - id: tocc_exposure
+    target_field: tocc.exposure
+    wording: 最近兩個月有旅遊、工作暴露、接觸相似症狀者、動物，或身邊三人以上相似症狀嗎？
+    answer_type: free_text
+    required: false
+    phase: SYMPTOM_COLLECTION
+  - id: vitals
+    target_field: vitals
+    wording: 若有實際量測，請提供血壓、脈搏、呼吸、體溫、血氧、血糖與量測時間；未量測請說「未量測」。
+    answer_type: measurements
+    required: false
+    phase: SYMPTOM_COLLECTION
+  - id: symptom_radiation
+    target_field: symptom.radiation
+    wording: 不舒服會延伸到背部、肩膀、下巴、手臂或腿部嗎？
+    answer_type: free_text
+    required: false
+    phase: SYMPTOM_COLLECTION
+  - id: symptom_aggravating
+    target_field: symptom.aggravating_factors
+    wording: 什麼情況會讓症狀更明顯？什麼情況會比較緩解？
+    answer_type: free_text
+    required: false
+    phase: SYMPTOM_COLLECTION
+  - id: dizziness_character
+    target_field: symptom.dizziness_character
+    wording: 頭暈時會覺得自己或周圍在轉嗎？有耳鳴或噁心嗎？
+    answer_type: free_text
+    required: false
+    phase: SYMPTOM_COLLECTION
+  - id: neurological_associated
+    target_field: symptom.neurological_associated
+    wording: 除了目前不舒服，有沒有新出現的麻木、無力、排尿排便改變或走路困難？
+    answer_type: free_text
+    required: false
+    phase: SYMPTOM_COLLECTION
+  - id: fever_measurement
+    target_field: vitals.temperature
+    wording: 有用體溫計量過嗎？最高溫度與量測時間是多少？未量測請直接說明。
+    answer_type: measurement
+    required: false
+    phase: SYMPTOM_COLLECTION
+  - id: infection_exposure
+    target_field: tocc.infection_exposure
+    wording: 發燒前有傷口、牙科處置、旅遊、接觸相似症狀者或動物嗎？
+    answer_type: free_text
+    required: false
+    phase: SYMPTOM_COLLECTION

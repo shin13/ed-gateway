@@ -1,0 +1,12 @@
+body::before {
+  content: "研究展示用途 · 僅使用合成資料 · 病況惡化請立即通知現場人員";
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  padding: 0.55rem 1rem;
+  color: #fff;
+  background: #8b1e1e;
+  font-weight: 700;
+  text-align: center;
+}

@@ -1,0 +1,51 @@
+version: "clinical-review-draft-v1"
+review_status: "This rule set is a clinical-review draft and is not approved for production use."
+rules:
+  - id: WARN-CARDIOVASCULAR
+    category: 心血管／胸痛
+    observation_field: safety.cardiovascular
+    clinical_review_status: draft
+  - id: WARN-NEUROLOGICAL
+    category: 神經
+    observation_field: safety.neurological
+    clinical_review_status: draft
+  - id: WARN-RESPIRATORY
+    category: 呼吸
+    observation_field: safety.respiratory
+    clinical_review_status: draft
+  - id: WARN-CIRCULATION
+    category: 循環
+    observation_field: safety.circulation
+    clinical_review_status: draft
+  - id: WARN-BLEEDING
+    category: 出血
+    observation_field: safety.bleeding
+    clinical_review_status: draft
+  - id: WARN-ALLERGY
+    category: 過敏
+    observation_field: safety.allergy
+    clinical_review_status: draft
+  - id: WARN-INFECTION-TEMPERATURE
+    category: 感染與體溫
+    observation_field: safety.infection_temperature
+    clinical_review_status: draft
+  - id: WARN-SEVERE-PAIN
+    category: 劇烈疼痛
+    observation_field: safety.severe_pain
+    clinical_review_status: draft
+  - id: WARN-TRAUMA
+    category: 高風險外傷機轉
+    observation_field: safety.trauma
+    clinical_review_status: draft
+  - id: WARN-HYPERTENSIVE
+    category: 高血壓合併症狀
+    observation_field: safety.hypertensive
+    clinical_review_status: draft
+  - id: WARN-MENTAL-HEALTH
+    category: 心理健康
+    observation_field: safety.mental_health
+    clinical_review_status: draft
+  - id: WARN-SELF-IDENTIFIED-DANGER
+    category: 病人自述危險
+    observation_field: safety.self_identified_danger
+    clinical_review_status: draft

@@ -1,0 +1,14 @@
+version: "1.0.0"
+rules:
+  - id: CONTEXT-CHEST
+    complaint_labels: [chest_discomfort]
+    priority_question_ids: [symptom_radiation, symptom_aggravating]
+  - id: CONTEXT-DIZZINESS
+    complaint_labels: [dizziness]
+    priority_question_ids: [dizziness_character, neurological_associated]
+  - id: CONTEXT-FEVER
+    complaint_labels: [fever]
+    priority_question_ids: [fever_measurement, infection_exposure]
+  - id: CONTEXT-LOWER-BACK
+    complaint_labels: [lower_back_pain]
+    priority_question_ids: [symptom_radiation, neurological_associated]

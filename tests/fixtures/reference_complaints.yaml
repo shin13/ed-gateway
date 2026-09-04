@@ -1,0 +1,18 @@
+cases:
+  - id: chest-discomfort
+    complaint: 我胸口悶悶的，會往背後跑
+    normalized_label: chest_discomfort
+    expected_context_question: symptom_radiation
+    expected_safety_rule: WARN-CARDIOVASCULAR
+  - id: dizziness
+    complaint: 我今天起床後頭暈，覺得天花板會轉
+    normalized_label: dizziness
+    expected_context_question: dizziness_character
+  - id: fever
+    complaint: 我從昨晚開始發燒，體溫計最高量到三十八度
+    normalized_label: fever
+    expected_context_question: fever_measurement
+  - id: lower-back-pain
+    complaint: 我搬重物後下背痛，會痠到大腿
+    normalized_label: lower_back_pain
+    expected_context_question: symptom_radiation

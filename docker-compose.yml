@@ -1,0 +1,69 @@
+services:
+  db:
+    image: postgres:16.10-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ed_gateway}
+      POSTGRES_USER: ${POSTGRES_USER:-ed_gateway}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ed-gateway-local-only}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - ed_gateway_db:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  api:
+    build: .
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn ed_gateway.api.app:app --host $${API_HOST} --port $${API_PORT}"]
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_NAME: ${APP_NAME:-ED Gateway}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DEMO_MODE: ${DEMO_MODE:-true}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
+      LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-1}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ed_gateway}:${POSTGRES_PASSWORD:-ed-gateway-local-only}@db:5432/${POSTGRES_DB:-ed_gateway}
+      API_HOST: ${API_HOST:-0.0.0.0}
+      API_PORT: ${API_PORT:-8001}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health/ready', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    init: true
+    restart: unless-stopped
+
+  web:
+    build: .
+    command: ["chainlit", "run", "src/ed_gateway/chainlit_ui/app.py", "-h", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      API_BASE_URL: http://api:8001
+      CHAINLIT_HOST: ${CHAINLIT_HOST:-0.0.0.0}
+      CHAINLIT_PORT: ${CHAINLIT_PORT:-8000}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    init: true
+    restart: unless-stopped
+
+volumes:
+  ed_gateway_db:
