@@ -117,7 +117,17 @@ class InterviewState(BaseModel):
         self.updated_at = utc_now()
 
         if observation.field_key == "respondent.type" and observation.status == FieldStatus.CONFIRMED:
-            self.respondent_type = RespondentType(observation.normalized_value)
+            try:
+                self.respondent_type = RespondentType(observation.normalized_value)
+            except ValueError:
+                downgraded = observation.model_copy(
+                    update={
+                        "status": FieldStatus.NEEDS_CLARIFICATION,
+                        "requires_human_confirmation": True,
+                    }
+                )
+                self.observations[observation.field_key] = downgraded
+                self.observation_history[-1] = downgraded
 
 
 class SafetyDecision(BaseModel):

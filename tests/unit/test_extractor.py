@@ -147,6 +147,24 @@ async def test_live_provider_cannot_clear_ambiguous_safety_answer(state) -> None
     assert observations[-1].status == FieldStatus.NEEDS_CLARIFICATION
 
 
+async def test_live_provider_cannot_set_unrecognized_respondent_type(state) -> None:
+    class FreeformRespondentTypeLLM:
+        async def extract(self, **_kwargs):
+            return {
+                "classification": "current",
+                "normalized_value": "patient self-report",
+                "status": "CONFIRMED",
+                "requires_human_confirmation": False,
+            }
+
+    observations = await ResponseExtractor(FreeformRespondentTypeLLM()).extract(
+        text="I am the patient myself.",
+        expected_field="respondent.type",
+        state=state,
+    )
+    assert observations[-1].status == FieldStatus.NEEDS_CLARIFICATION
+
+
 @pytest.mark.parametrize(
     ("text", "label"),
     [

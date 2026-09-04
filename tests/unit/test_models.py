@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-from ed_gateway.domain.models import FieldStatus, InformationSource, Observation
+from ed_gateway.domain.models import FieldStatus, InformationSource, Observation, RespondentType
 
 
 def test_observation_requires_timezone() -> None:
@@ -60,3 +60,20 @@ def test_confirmed_then_denied_is_recorded_as_contradiction(state) -> None:
     assert state.contradictions == ["safety.cardiovascular: CONFIRMED -> DENIED"]
     assert state.observations["safety.cardiovascular"].status == FieldStatus.NEEDS_CLARIFICATION
     assert state.observations["safety.cardiovascular"].requires_human_confirmation is True
+
+
+def test_unrecognized_respondent_type_value_does_not_crash(state) -> None:
+    state.merge_observation(
+        Observation(
+            field_key="respondent.type",
+            verbatim_text="I am the patient myself.",
+            normalized_value="patient self-report",
+            source=InformationSource.PATIENT_STATEMENT,
+            status=FieldStatus.CONFIRMED,
+            ai_normalized=True,
+        )
+    )
+    assert state.respondent_type == RespondentType.UNKNOWN
+    stored = state.observations["respondent.type"]
+    assert stored.status == FieldStatus.NEEDS_CLARIFICATION
+    assert stored.requires_human_confirmation is True
