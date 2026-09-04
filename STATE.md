@@ -46,7 +46,15 @@ The local Docker Compose stack is intentionally left running:
 
 ## Known Issues / Blockers
 
-- No implementation blocker is active.
+- **Crash on `openai_compatible` provider: unvalidated LLM proposal breaks `respondent.type` enum coercion.**
+  - Discovered 2026-09-04 during the user's first live validation pass, after configuring a real `LLM_PROVIDER=openai_compatible` endpoint (previously only `mock` had been exercised).
+  - Repro: create a session, answer the first question ("現在操作的是病人本人，還是家屬或陪同者？") in English, e.g. `"I am the patient myself."` via `POST /api/v1/interview-sessions/{id}/messages`.
+  - Observed: `HTTP 500`. Traceback bottoms out at `domain/models.py:120` — `self.respondent_type = RespondentType(observation.normalized_value)` raises `ValueError: 'patient self-report' is not a valid RespondentType`. The LLM correctly understood the English input semantically (`normalized_value="patient self-report"`), but `extractor.py::_provider_observation()` forwards the provider's free-form value into `Observation.normalized_value` for non-safety fields without validating it against the field's expected enum contract, and `merge_observation()` performs the enum coercion with no `try/except`.
+  - Blast radius checked: grepped every consumer of `normalized_value` (`planner.py`, `drafts.py`, `safety.py`) — all other sites already guard with `isinstance` checks. `domain/models.py:120` is the only unguarded coercion.
+  - Not caught by the existing 58-test suite because `MockLLMClient.extract()` never returns a `classification`/`status`, so `_provider_observation()` always short-circuits to `None` in mock mode — this path is only reachable with a real LLM provider.
+  - Safety impact: none directly (this is the respondent-identity field, not a safety-warning field), but it is a full request crash mid-interview, and it demonstrates the same class of risk could reach other non-safety fields if their expected shape is ever violated by a live LLM's output. `openai_compatible` should be treated as **not validated for live use** until this is fixed.
+  - Planned fix (approved by user, not yet implemented): (1) `extractor.py::_provider_observation` — validate `normalized_value` against the field's allowed values for enum-constrained fields (starting with `respondent.type`); reject and fall back to `NEEDS_CLARIFICATION` instead of trusting free-form provider output. (2) `domain/models.py::merge_observation` — wrap the `RespondentType(...)` coercion in `try/except`, downgrading to `NEEDS_CLARIFICATION` + `requires_human_confirmation=True` on failure instead of raising, as defense-in-depth for any future caller.
+  - Being fixed on a branch (TDD: failing test first) per user instruction; will be committed and merged into `main` once verified.
 - Clinical governance questions remain in `docs/open-clinical-decisions.md`.
 - Production requirements remain in `docs/privacy-and-production-gaps.md`.
 
