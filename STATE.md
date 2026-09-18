@@ -4,8 +4,18 @@ _Last updated: 2026-09-18 — Session: multilingual safety detection_
 
 ## Status
 
-The MVP is on `main`. Multilingual safety detection is implemented and live-verified on branch
-`feat/multilingual-safety-detection` (`ac73d27..ccf8022`), not yet merged.
+Multilingual safety detection is merged into `main` (`00c199d`, `--no-ff` merge of
+`feat/multilingual-safety-detection`). The stack was taken down and rebuilt from merged `main`;
+the named volume was preserved, so prior demo sessions and drafts survived (29 sessions, 19 drafts
+present after the rebuild). A live post-merge check confirmed an English warning sign still
+escalates via `detected_by: llm_semantic_screen`.
+
+**One test is knowingly red on `main`** — see "Open Decision" below. Merged on the user's explicit
+instruction; the assertion was deliberately left untouched rather than weakened to force green.
+
+Both feature branches are still present locally and were not deleted:
+`feat/multilingual-safety-detection` (now fully merged) and `fix/llm-respondent-type-crash`
+(fully merged since `817ff3d`).
 
 The local Docker Compose stack is running:
 
@@ -42,6 +52,34 @@ Verified live against the real provider, not only by unit test:
 - Gates: 73 passed / 1 skipped, `ruff check .` clean, `mypy` clean on 26 source files.
 - `api` logs contain no tracebacks and zero occurrences of the interview text used in these runs,
   so the no-raw-messages-to-stdout invariant still holds.
+
+### Open Decision — failing compose smoke test (blocks a fully green suite)
+
+`tests/smoke/test_compose.py:28` asserts that 「胸痛還冒冷汗」 triggers exactly
+`["WARN-CARDIOVASCULAR"]`. It now returns `["WARN-CARDIOVASCULAR", "WARN-CIRCULATION"]`, so the
+test fails. Traced to the layer, not guessed:
+
+- `safety.cardiovascular` → keyword layer, `{"detail": "胸痛還冒冷汗", "present": true}`
+- `safety.circulation` → semantic layer, `{"present": true, "detected_by": "llm_semantic_screen"}`
+
+The model mapped 冒冷汗 to the circulation category's `cold clammy skin` concept. The Chinese
+keyword list for circulation contains 皮膚冰冷、臉色蒼白、快昏倒、眼前發黑、心悸又無力 but not
+冒冷汗, so the keyword layer never caught it. Escalation behaviour is unchanged — still
+`ESCALATED`, ordinary questioning still stops, still immediate nurse review. The only difference
+is the nurse sees two categories instead of one.
+
+Two questions, both unresolved:
+
+1. **Engineering:** should the smoke assertion become containment (`"WARN-CARDIOVASCULAR" in
+   triggered`)? The test's purpose is proving the escalation path works end to end, not that
+   exactly one rule fires. Not changed unilaterally, because the trigger for the change was a
+   behaviour change introduced in the same work.
+2. **Clinical:** should 冒冷汗 flag the circulation category at all? Not an engineering call.
+   Belongs with `docs/open-clinical-decisions.md`.
+
+Related discovery worth recording: this feature is **not only multilingual**. It also catches
+Chinese phrasings the hardcoded keyword list misses, which is wider than the scope the design
+described. Beneficial on its face, but it was not the approved scope and needs a decision.
 
 ### Residual scope for this feature
 
