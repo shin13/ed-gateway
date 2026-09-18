@@ -65,3 +65,22 @@ def test_export_always_ends_with_the_nurse_review_disclaimer(state) -> None:
     )
 
     assert markdown.rstrip().endswith(DISCLAIMER)
+
+
+def test_multi_line_messages_do_not_break_the_transcript_layout(state) -> None:
+    transcript = [
+        TranscriptMessage(sequence=1, role="assistant", content="第一段\n\n第二段", source="SYSTEM"),
+        TranscriptMessage(sequence=2, role="user", content="我是家屬", source="CAREGIVER_STATEMENT"),
+    ]
+
+    markdown = render_session_export(
+        state=state,
+        transcript=transcript,
+        draft=None,
+        llm_provider="mock",
+        llm_model="",
+    )
+
+    assert "### 1. 系統（SYSTEM）" in markdown
+    assert "### 2. 填答者（CAREGIVER_STATEMENT）" in markdown
+    assert "第二段" in markdown

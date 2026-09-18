@@ -45,13 +45,12 @@ def _header(state: InterviewState, llm_provider: str, llm_model: str) -> str:
 def _transcript_section(transcript: list[TranscriptMessage]) -> str:
     if not transcript:
         return f"## 對話逐字紀錄\n\n{NO_TRANSCRIPT}"
-    lines = ["## 對話逐字紀錄", ""]
-    lines += [
-        f"{message.sequence}. **{ROLE_LABELS.get(message.role, message.role)}**"
-        f"（{message.source}）：{message.content}"
-        for message in transcript
-    ]
-    return "\n".join(lines)
+    # A heading per message keeps multi-line answers from collapsing into the previous one.
+    blocks = ["## 對話逐字紀錄"]
+    for message in transcript:
+        speaker = ROLE_LABELS.get(message.role, message.role)
+        blocks.append(f"### {message.sequence}. {speaker}（{message.source}）\n\n{message.content}")
+    return "\n\n".join(blocks)
 
 
 def _draft_section(draft: DraftPayload | None) -> str:
