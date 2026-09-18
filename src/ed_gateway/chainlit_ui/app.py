@@ -12,6 +12,18 @@ from ed_gateway.settings import get_settings
 SETTINGS = get_settings()
 HTTP_TIMEOUT = 30.0
 
+OFFLINE_NOTICE = (
+    "⚠️ **目前為離線示範模式**\n\n"
+    "系統未連接語言模型，只能比對預先設定的繁體中文關鍵字，無法理解自由語句或其他語言。"
+    "流程與畫面可以照常測試，但對話理解能力不代表完整版本。"
+    "若要測試完整對話能力，請依 `DEPLOYMENT.md` 設定自己的語言模型憑證。"
+)
+
+
+def offline_notice(readiness: dict[str, Any]) -> str | None:
+    """Tell the tester when answers are keyword-matched instead of interpreted."""
+    return OFFLINE_NOTICE if readiness.get("llm") == "mock" else None
+
 
 async def _api_request(method: str, path: str, json_body: dict[str, Any] | None = None) -> dict[str, Any]:
     try:
@@ -33,22 +45,13 @@ async def _api_request(method: str, path: str, json_body: dict[str, Any] | None 
 
 def _actions(completed: bool) -> list[cl.Action]:
     actions = [
-        cl.Action(
-            name="new_demo_session",
-            payload={},
-            label="開始新的合成展示",
-            icon="refresh-cw",
-        )
+        cl.Action(name="export_transcript", payload={}, label="匯出本次對話", icon="download"),
+        cl.Action(name="new_demo_session", payload={}, label="開始新的合成展示", icon="refresh-cw"),
     ]
     if not completed:
         actions.insert(
             0,
-            cl.Action(
-                name="finish_interview",
-                payload={},
-                label="完成並產生草稿",
-                icon="file-check",
-            ),
+            cl.Action(name="finish_interview", payload={}, label="完成並產生草稿", icon="file-check"),
         )
     return actions
 
@@ -75,6 +78,9 @@ async def _render_turn(turn: dict[str, Any]) -> None:
 
 
 async def _start_session() -> None:
+    notice = offline_notice(await _api_request("GET", "/health/ready"))
+    if notice:
+        await cl.Message(content=notice).send()
     turn = await _api_request(
         "POST",
         "/api/v1/interview-sessions",
@@ -114,6 +120,29 @@ async def finish_interview(action: cl.Action) -> None:
         return
     turn = await _api_request("POST", f"/api/v1/interview-sessions/{session_id}/finish")
     await _render_turn(turn)
+
+
+@cl.action_callback("export_transcript")
+async def export_transcript(action: cl.Action) -> None:
+    session_id = cl.user_session.get("interview_session_id")
+    if not session_id:
+        await cl.Message(content="目前沒有進行中的對話可以匯出。").send()
+        return
+    export = await _api_request("GET", f"/api/v1/interview-sessions/{session_id}/export")
+    markdown = export.get("rendered_markdown")
+    if not isinstance(markdown, str):
+        await cl.Message(content="目前無法匯出這次對話，請稍後再試。").send()
+        return
+    await cl.Message(
+        content="已匯出本次對話，請下載檔案後回傳給開發者作為回饋。",
+        elements=[
+            cl.File(
+                name=f"ed-gateway-{session_id}.md",
+                content=markdown.encode("utf-8"),
+                display="inline",
+            )
+        ],
+    ).send()
 
 
 @cl.action_callback("new_demo_session")
