@@ -5,47 +5,107 @@ rules:
     category: 心血管／胸痛
     observation_field: safety.cardiovascular
     clinical_review_status: draft
+    detection_concepts_en:
+      - chest pain
+      - chest tightness or chest pressure
   - id: WARN-NEUROLOGICAL
     category: 神經
     observation_field: safety.neurological
     clinical_review_status: draft
+    detection_concepts_en:
+      - facial drooping
+      - weakness or numbness on one side of the body
+      - slurred or unclear speech
+      - sudden vision loss or double vision
+      - sudden loss of balance, unable to stand
+      - worst headache of their life
+      - seizure or convulsions
+      - unresponsive, cannot be woken
+      - fainted or lost consciousness
   - id: WARN-RESPIRATORY
     category: 呼吸
     observation_field: safety.respiratory
     clinical_review_status: draft
+    detection_concepts_en:
+      - too short of breath to speak
+      - blue or purple lips
+      - difficulty breathing
+      - swollen throat or blocked airway
   - id: WARN-CIRCULATION
     category: 循環
     observation_field: safety.circulation
     clinical_review_status: draft
+    detection_concepts_en:
+      - about to faint
+      - vision going dark or blacking out
+      - cold clammy skin
+      - pale complexion
+      - palpitations with weakness
   - id: WARN-BLEEDING
     category: 出血
     observation_field: safety.bleeding
     clinical_review_status: draft
+    detection_concepts_en:
+      - bleeding that will not stop
+      - vomiting blood
+      - black tarry stools
+      - large amount of blood in stool
+      - heavy vaginal bleeding
   - id: WARN-ALLERGY
     category: 過敏
     observation_field: safety.allergy
     clinical_review_status: draft
+    detection_concepts_en:
+      - hives or rash over the whole body
+      - swollen lips
+      - swollen throat
+      - severe allergic reaction
   - id: WARN-INFECTION-TEMPERATURE
     category: 感染與體溫
     observation_field: safety.infection_temperature
     clinical_review_status: draft
+    detection_concepts_en:
+      - fever together with confusion or altered consciousness
+      - fever together with severe shortness of breath
   - id: WARN-SEVERE-PAIN
     category: 劇烈疼痛
     observation_field: safety.severe_pain
     clinical_review_status: draft
+    detection_concepts_en:
+      - pain rated ten out of ten
+      - extreme or unbearable pain
+      - sudden constant abdominal pain
   - id: WARN-TRAUMA
     category: 高風險外傷機轉
     observation_field: safety.trauma
     clinical_review_status: draft
+    detection_concepts_en:
+      - thrown or ejected from a vehicle
+      - vehicle rollover
+      - gunshot wound
+      - stab or penetrating wound
+      - fall from height
+      - trapped or pinned
   - id: WARN-HYPERTENSIVE
     category: 高血壓合併症狀
     observation_field: safety.hypertensive
     clinical_review_status: draft
+    detection_concepts_en:
+      - systolic blood pressure around two hundred
   - id: WARN-MENTAL-HEALTH
     category: 心理健康
     observation_field: safety.mental_health
     clinical_review_status: draft
+    detection_concepts_en:
+      - wanting to die
+      - thoughts of self-harm
+      - thoughts of harming others
+      - unable to calm down, in crisis
   - id: WARN-SELF-IDENTIFIED-DANGER
     category: 病人自述危險
     observation_field: safety.self_identified_danger
     clinical_review_status: draft
+    detection_concepts_en:
+      - feels about to collapse
+      - feels they cannot hold on
+      - says the situation is dangerous

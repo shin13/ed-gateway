@@ -31,6 +31,7 @@ class SafetyRuleDefinition(BaseModel):
     observation_field: str
     trigger_statuses: list[str] = Field(default_factory=lambda: ["CONFIRMED"])
     clinical_review_status: str
+    detection_concepts_en: list[str] = Field(default_factory=list)
 
 
 class ContextRuleDefinition(BaseModel):
