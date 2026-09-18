@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 from uuid import UUID
 
-from ed_gateway.domain.models import DraftPayload, InformationSource, InterviewState
+from ed_gateway.domain.models import DraftPayload, InformationSource, InterviewState, TranscriptMessage
 
 
 class InterviewRepository(Protocol):
@@ -29,6 +29,8 @@ class InterviewRepository(Protocol):
     ) -> None: ...
 
     async def get_draft(self, session_id: UUID) -> DraftPayload | None: ...
+
+    async def get_transcript(self, session_id: UUID) -> list[TranscriptMessage]: ...
 
 
 class InMemoryInterviewRepository:
@@ -94,3 +96,6 @@ class InMemoryInterviewRepository:
     async def get_draft(self, session_id: UUID) -> DraftPayload | None:
         draft = self.drafts.get(session_id)
         return draft.model_copy(deep=True) if draft else None
+
+    async def get_transcript(self, session_id: UUID) -> list[TranscriptMessage]:
+        return [TranscriptMessage(**message) for message in self.messages.get(session_id, [])]

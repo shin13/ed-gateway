@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from ed_gateway.domain.models import DraftPayload, InformationSource, InterviewState
+from ed_gateway.domain.models import DraftPayload, InformationSource, InterviewState, TranscriptMessage
 from ed_gateway.infrastructure.tables import (
     DraftRow,
     InterviewEventRow,
@@ -148,3 +148,18 @@ class SQLAlchemyInterviewRepository:
                 rendered_markdown=row.rendered_markdown,
                 created_at=row.created_at,
             )
+
+    async def get_transcript(self, session_id: UUID) -> list[TranscriptMessage]:
+        async with self._session_factory() as session:
+            rows = await session.scalars(
+                select(MessageRow).where(MessageRow.session_id == session_id).order_by(MessageRow.sequence)
+            )
+            return [
+                TranscriptMessage(
+                    sequence=row.sequence,
+                    role=row.role,
+                    content=row.raw_content,
+                    source=row.source,
+                )
+                for row in rows
+            ]

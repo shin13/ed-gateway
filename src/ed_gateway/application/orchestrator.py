@@ -16,6 +16,7 @@ from ed_gateway.domain.models import (
     InterviewPhase,
     InterviewState,
     SafetyStatus,
+    TranscriptMessage,
     TurnResponse,
 )
 
@@ -163,6 +164,10 @@ class InterviewOrchestrator:
     async def get_draft(self, session_id: UUID) -> DraftPayload | None:
         await self._require_state(session_id)
         return await self._repository.get_draft(session_id)
+
+    async def get_transcript(self, session_id: UUID) -> list[TranscriptMessage]:
+        await self._require_state(session_id)
+        return await self._repository.get_transcript(session_id)
 
     async def _complete(
         self,

@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
@@ -160,3 +160,25 @@ async def test_health_and_openapi(client) -> None:
     assert (await client.get("/health/ready")).json()["status"] == "ready"
     schema = (await client.get("/openapi.json")).json()
     assert "/api/v1/interview-sessions" in schema["paths"]
+
+
+async def test_export_returns_the_whole_session_as_one_markdown_file(client) -> None:
+    turn = await _create(client)
+    session_id = turn["session_id"]
+    await client.post(f"/api/v1/interview-sessions/{session_id}/messages", json={"content": "我是家屬"})
+
+    response = await client.get(f"/api/v1/interview-sessions/{session_id}/export")
+
+    assert response.status_code == 200
+    export = response.json()
+    assert export["session_id"] == session_id
+    markdown = export["rendered_markdown"]
+    assert "我是家屬" in markdown
+    assert "mock" in markdown
+    assert "不會診斷" in markdown
+
+
+async def test_export_of_an_unknown_session_is_not_found(client) -> None:
+    response = await client.get(f"/api/v1/interview-sessions/{uuid4()}/export")
+
+    assert response.status_code == 404

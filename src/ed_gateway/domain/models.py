@@ -145,6 +145,21 @@ class DraftPayload(BaseModel):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class TranscriptMessage(BaseModel):
+    sequence: int
+    role: str
+    content: str
+    source: str
+
+
+class SessionExport(BaseModel):
+    """One session rendered as a single file a tester can hand back as feedback."""
+
+    session_id: UUID
+    exported_at: datetime = Field(default_factory=utc_now)
+    rendered_markdown: str
+
+
 class TurnResponse(BaseModel):
     session_id: UUID
     phase: InterviewPhase

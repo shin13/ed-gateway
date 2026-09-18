@@ -9,12 +9,14 @@ from fastapi import FastAPI, HTTPException, Response, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from ed_gateway.application.exports import render_session_export
 from ed_gateway.application.repository import InterviewRepository
 from ed_gateway.bootstrap import create_orchestrator
 from ed_gateway.domain.models import (
     CreateSessionRequest,
     DraftPayload,
     MessageRequest,
+    SessionExport,
     SessionView,
     TurnResponse,
 )
@@ -114,6 +116,25 @@ def create_app(*, settings: Settings | None = None, repository: InterviewReposit
         if draft is None:
             raise HTTPException(status_code=404, detail="Draft is not ready")
         return draft
+
+    @app.get("/api/v1/interview-sessions/{session_id}/export", response_model=SessionExport)
+    async def export_session(session_id: UUID) -> SessionExport:
+        try:
+            state = await orchestrator.get_state(session_id)
+            transcript = await orchestrator.get_transcript(session_id)
+            draft = await orchestrator.get_draft(session_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Interview session not found") from exc
+        return SessionExport(
+            session_id=session_id,
+            rendered_markdown=render_session_export(
+                state=state,
+                transcript=transcript,
+                draft=draft,
+                llm_provider=resolved_settings.LLM_PROVIDER,
+                llm_model=resolved_settings.LLM_MODEL,
+            ),
+        )
 
     return app
 
