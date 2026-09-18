@@ -16,6 +16,13 @@ def test_clinical_configuration_loads_and_has_twelve_safety_rules() -> None:
     assert len({rule.id for rule in config.safety_rules}) == 12
 
 
+def test_every_safety_rule_has_english_detection_concepts() -> None:
+    config = load_clinical_config(Path(__file__).parents[2] / "config")
+
+    for rule in config.safety_rules:
+        assert rule.detection_concepts_en, f"{rule.id} has no English detection concepts"
+
+
 def test_configuration_rejects_context_reference_to_unknown_question(tmp_path: Path) -> None:
     source = Path(__file__).parents[2] / "config"
     for name in ("interview-schema.yaml", "question-catalog.yaml", "safety-rules.yaml"):

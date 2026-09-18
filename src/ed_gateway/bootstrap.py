@@ -37,7 +37,10 @@ def create_orchestrator(
     return InterviewOrchestrator(
         repository=repository,
         session_manager=InterviewSessionManager(repository, config.safety_version),
-        extractor=ResponseExtractor(create_llm_client(settings)),
+        extractor=ResponseExtractor(
+            create_llm_client(settings),
+            {rule.observation_field: rule.detection_concepts_en for rule in config.safety_rules},
+        ),
         safety_gate=SafetyGate(config.safety_rules),
         planner=QuestionPlanner(config),
         draft_generator=DraftGenerator(config, root / "config" / "nurse-draft-template.md"),

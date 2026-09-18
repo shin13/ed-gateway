@@ -52,6 +52,14 @@ SAFETY_CONCEPTS: dict[str, tuple[str, ...]] = {
 }
 
 
+class SafetyScanDegraded(Exception):
+    """The provider call failed, so this turn was screened by the keyword layer only."""
+
+    def __init__(self, partial_observations: list[Observation]) -> None:
+        super().__init__("multilingual safety screen unavailable for this turn")
+        self.partial_observations = partial_observations
+
+
 def _source_for(state: InterviewState) -> InformationSource:
     if state.respondent_type == RespondentType.CAREGIVER:
         return InformationSource.CAREGIVER_STATEMENT
@@ -138,8 +146,9 @@ def _normalize_vitals(text: str) -> dict[str, Any]:
 class ResponseExtractor:
     """Context-aware extractor with optional LLM assistance and deterministic safeguards."""
 
-    def __init__(self, llm: LLMClient) -> None:
+    def __init__(self, llm: LLMClient, safety_categories: dict[str, list[str]] | None = None) -> None:
         self._llm = llm
+        self._safety_categories = safety_categories or {}
 
     async def extract(self, *, text: str, expected_field: str, state: InterviewState) -> list[Observation]:
         source = _source_for(state)
@@ -197,11 +206,20 @@ class ResponseExtractor:
             observations.append(expected)
 
         # The provider may resolve an otherwise ambiguous field. Safety-negative proposals never clear a warning.
-        proposal = await self._llm.extract(
-            text=text,
-            expected_field=expected_field,
-            context={"respondent_type": state.respondent_type.value, "classification": classification},
-        )
+        try:
+            proposal = await self._llm.extract(
+                text=text,
+                expected_field=expected_field,
+                context={
+                    "respondent_type": state.respondent_type.value,
+                    "classification": classification,
+                    "safety_categories": self._safety_categories,
+                },
+            )
+        except Exception as error:
+            # Deliberately broad: any provider error must degrade to keyword-only screening
+            # rather than reach the respondent as a failed turn.
+            raise SafetyScanDegraded(observations) from error
         provider_observation = self._provider_observation(
             proposal=proposal,
             text=text,
@@ -217,7 +235,49 @@ class ResponseExtractor:
                 observations.append(provider_observation)
             elif observations[existing_index].status == FieldStatus.NEEDS_CLARIFICATION:
                 observations[existing_index] = provider_observation
+
+        observations.extend(
+            self._proposed_safety_observations(
+                proposal=proposal,
+                text=text,
+                expected_field=expected_field,
+                source=source,
+                observations=observations,
+            )
+        )
         return observations
+
+    def _proposed_safety_observations(
+        self,
+        *,
+        proposal: dict[str, Any],
+        text: str,
+        expected_field: str,
+        source: InformationSource,
+        observations: list[Observation],
+    ) -> list[Observation]:
+        """Add-only: a proposal may flag a category the keyword sweep missed, never clear one."""
+        proposed = proposal.get("other_safety_categories")
+        if not isinstance(proposed, list):
+            return []
+        seen = {item.field_key for item in observations} | {expected_field}
+        additions: list[Observation] = []
+        for field in proposed:
+            if not isinstance(field, str) or field not in self._safety_categories or field in seen:
+                continue
+            seen.add(field)
+            additions.append(
+                Observation(
+                    field_key=field,
+                    verbatim_text=text,
+                    normalized_value={"present": True, "detected_by": "llm_semantic_screen"},
+                    source=source,
+                    status=FieldStatus.CONFIRMED,
+                    ai_normalized=True,
+                    requires_human_confirmation=True,
+                )
+            )
+        return additions
 
     def _extract_expected(
         self,

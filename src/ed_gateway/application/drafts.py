@@ -168,5 +168,13 @@ class DraftGenerator:
     @staticmethod
     def _review_points(state: InterviewState) -> str:
         if state.triggered_rule_ids:
-            return "立即確認警訊、觸發原話、發生時間與尚未取得的關鍵資料。"
-        return "確認原話、正規化內容、資料來源、缺失欄位與矛盾資料。"
+            points = ["立即確認警訊、觸發原話、發生時間與尚未取得的關鍵資料。"]
+        else:
+            points = ["確認原話、正規化內容、資料來源、缺失欄位與矛盾資料。"]
+        if state.safety_scan_degraded:
+            quoted = "、".join(f"「{answer}」" for answer in state.safety_scan_degraded)
+            points.append(
+                f"以下 {len(state.safety_scan_degraded)} 則回答的跨語言警訊掃描未能執行，"
+                f"請人工複查原文是否含警訊：{quoted}"
+            )
+        return "\n".join(points)

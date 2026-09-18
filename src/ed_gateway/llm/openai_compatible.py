@@ -26,16 +26,40 @@ class OpenAICompatibleClient:
         self._max_retries = max_retries
         self._temperature = temperature
 
-    async def extract(self, *, text: str, expected_field: str, context: dict[str, Any]) -> dict[str, Any]:
-        prompt = (
-            "Classify the supplied Traditional Chinese emergency-intake answer into JSON only. "
+    def _build_prompt(self, *, text: str, expected_field: str, context: dict[str, Any]) -> str:
+        other_context = {key: value for key, value in context.items() if key != "safety_categories"}
+        return (
+            "Classify the supplied emergency-intake answer into JSON only. The answer may be in "
+            "any language; interpret it by meaning rather than by matching words. "
             "Do not diagnose, triage, recommend treatment, or infer missing measurements. "
             "Distinguish current symptom, denial, past history, family history, hypothetical "
             "question, caregiver statement, measurement, and ambiguity. Return keys "
-            "classification, normalized_value, status, requires_human_confirmation.\n"
-            f"Expected field: {expected_field}\nContext: {json.dumps(context, ensure_ascii=False)}\n"
+            "classification, normalized_value, status, requires_human_confirmation, "
+            "other_safety_categories.\n"
+            f"{self._safety_category_section(context)}"
+            f"Expected field: {expected_field}\n"
+            f"Context: {json.dumps(other_context, ensure_ascii=False)}\n"
             f"Answer: {text}"
         )
+
+    @staticmethod
+    def _safety_category_section(context: dict[str, Any]) -> str:
+        categories = context.get("safety_categories")
+        if not isinstance(categories, dict) or not categories:
+            return ""
+        listed = "\n".join(
+            f"- {field}: {'; '.join(concepts)}" for field, concepts in sorted(categories.items())
+        )
+        return (
+            "In other_safety_categories, list the field keys below whose condition this answer "
+            "reports as present for this patient right now, and use [] when none apply. Never "
+            "list one for a denial, a past episode, a family member's history, or a hypothetical "
+            "question.\n"
+            f"{listed}\n"
+        )
+
+    async def extract(self, *, text: str, expected_field: str, context: dict[str, Any]) -> dict[str, Any]:
+        prompt = self._build_prompt(text=text, expected_field=expected_field, context=context)
         payload = {
             "model": self._model,
             "temperature": self._temperature,

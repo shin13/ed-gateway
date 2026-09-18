@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from ed_gateway.application.drafts import DraftGenerator
-from ed_gateway.application.extractor import ResponseExtractor
+from ed_gateway.application.extractor import ResponseExtractor, SafetyScanDegraded
 from ed_gateway.application.planner import QuestionPlanner
 from ed_gateway.application.repository import InterviewRepository
 from ed_gateway.application.safety import SafetyGate
@@ -76,7 +76,13 @@ class InterviewOrchestrator:
         source = self._message_source(state, content)
         await self._repository.record_user_message(session_id, content, source)
         prior = state.observations.get(question.target_field)
-        observations = await self._extractor.extract(text=content, expected_field=question.target_field, state=state)
+        try:
+            observations = await self._extractor.extract(
+                text=content, expected_field=question.target_field, state=state
+            )
+        except SafetyScanDegraded as degraded:
+            observations = degraded.partial_observations
+            state.safety_scan_degraded.append(content)
         for observation in observations:
             ambiguous_statuses = {FieldStatus.NEEDS_CLARIFICATION}
             if observation.field_key.startswith("safety."):

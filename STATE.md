@@ -1,17 +1,58 @@
 # ED Gateway State
 
-_Last updated: 2026-09-04 — Session: MVP build closeout_
+_Last updated: 2026-09-18 — Session: multilingual safety detection_
 
 ## Status
 
-The research MVP vertical slice is complete and committed on `codex/build-ed-gateway-mvp`. It is ready for the user's synthetic live validation and a later feedback-driven revision session. No code work is in progress.
+The MVP is on `main`. Multilingual safety detection is implemented and live-verified on branch
+`feat/multilingual-safety-detection` (`ac73d27..ccf8022`), not yet merged.
 
-The local Docker Compose stack is intentionally left running:
+The local Docker Compose stack is running:
 
 - Chainlit: `http://127.0.0.1:8000`
 - FastAPI/OpenAPI: `http://127.0.0.1:8001/docs`
 - PostgreSQL: internal Compose network only, named volume retained
-- Current provider: `mock`; no live LLM provider has been validated
+- Current provider: `openai_compatible` (`gpt-4.1-mini` via the configured endpoint), validated live
+
+## Multilingual Safety Detection — Live Evidence (2026-09-18)
+
+Design: `docs/multilingual-safety-detection-design.md`. Plan: `docs/multilingual-safety-detection-plan.md`.
+
+The 12 warning categories now have a second detection layer. The per-turn provider call also
+screens the other categories semantically, in any language; the Chinese keyword sweep is unchanged
+and still runs first. Proposals are whitelist-validated and add-only: they can flag a category the
+keyword layer missed but can never clear one it found. `SafetyGate` was not touched.
+
+Verified live against the real provider, not only by unit test:
+
+- **English warning during an unrelated question** — while the age question was being asked,
+  `"I am 40, and my left arm suddenly went weak"` escalated: `200`, phase `ESCALATED`,
+  `WARN-NEUROLOGICAL`. The draft observation carries
+  `{"present": true, "detected_by": "llm_semantic_screen"}` with the English verbatim text and
+  `requires_human_confirmation: true` — so the new layer, not the keyword sweep, produced it.
+- **Chinese baseline unchanged** — `"我現在突然半邊無力"` still escalates with `WARN-NEUROLOGICAL`.
+- **No false escalation** — `"I am 34 years old"` and `"我34歲"` both advance normally,
+  `safety_status: PENDING`, no triggered rules.
+- **Degraded path exercised live**, not just in tests: a one-off API container pointed at an
+  unreachable provider (`LLM_BASE_URL=http://127.0.0.1:9/v1`) against the real database. Turns
+  returned `200` and the interview advanced normally, and the draft's 【護理師覆核重點】 listed both
+  unscreened answers verbatim for manual review. Before this change that first turn was a 500:
+  `orchestrator.py:79` had no exception handling around the extractor call, so any provider
+  timeout or connection failure crashed the turn. That defect is now closed and regression-tested.
+- Gates: 73 passed / 1 skipped, `ruff check .` clean, `mypy` clean on 26 source files.
+- `api` logs contain no tracebacks and zero occurrences of the interview text used in these runs,
+  so the no-raw-messages-to-stdout invariant still holds.
+
+### Residual scope for this feature
+
+- The English `detection_concepts_en` wording is a working translation with **no clinical or
+  bilingual review**; recorded as item 10 in `docs/open-clinical-decisions.md`.
+- **No per-language evaluation was run.** Languages are covered only as well as `gpt-4.1-mini`
+  covers them. Only English and Traditional Chinese were exercised; nothing else was tested.
+- The Chinese phrase lists remain hardcoded in `extractor.py` rather than versioned in `config/`,
+  which still contradicts the architecture note in `CLAUDE.md`. Unchanged and still open.
+- Other non-safety fields still accept whatever shape a provider proposes, apart from
+  `respondent.type`. No crash is known there, but no exhaustive live testing has been done.
 
 ## What Was Done This Session
 
