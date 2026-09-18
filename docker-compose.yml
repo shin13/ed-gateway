@@ -16,6 +16,7 @@ services:
 
   api:
     build: .
+    image: ed-gateway:${ED_GATEWAY_VERSION:-0.1.0}
     command: ["sh", "-c", "alembic upgrade head && exec uvicorn ed_gateway.api.app:app --host $${API_HOST} --port $${API_PORT}"]
     environment:
       APP_ENV: ${APP_ENV:-development}
@@ -47,6 +48,7 @@ services:
 
   web:
     build: .
+    image: ed-gateway:${ED_GATEWAY_VERSION:-0.1.0}
     command: ["chainlit", "run", "src/ed_gateway/chainlit_ui/app.py", "-h", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       API_BASE_URL: http://api:8001
