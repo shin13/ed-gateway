@@ -184,6 +184,88 @@ async def test_reference_complaints_share_one_normalizer(extractor, state, text,
     assert complaint.normalized_value["label"] == label
 
 
+SAFETY_CATEGORIES = {
+    "safety.cardiovascular": ["chest pain"],
+    "safety.neurological": ["weakness on one side of the body"],
+}
+
+
+class _ProposalLLM:
+    def __init__(self, categories: object) -> None:
+        self._categories = categories
+        self.context: dict[str, object] = {}
+
+    async def extract(self, *, text: str, expected_field: str, context: dict) -> dict:
+        self.context = context
+        return {
+            "classification": "current",
+            "normalized_value": None,
+            "status": "NEEDS_CLARIFICATION",
+            "other_safety_categories": self._categories,
+        }
+
+
+async def test_provider_categories_reach_the_llm_client(state) -> None:
+    llm = _ProposalLLM([])
+    await ResponseExtractor(llm, SAFETY_CATEGORIES).extract(
+        text="hello",
+        expected_field="symptom.onset",
+        state=state,
+    )
+    assert llm.context["safety_categories"] == SAFETY_CATEGORIES
+
+
+async def test_non_chinese_warning_is_detected_from_provider_proposal(state) -> None:
+    observations = await ResponseExtractor(
+        _ProposalLLM(["safety.neurological"]), SAFETY_CATEGORIES
+    ).extract(
+        text="my right arm went weak an hour ago",
+        expected_field="symptom.onset",
+        state=state,
+    )
+    warning = next(item for item in observations if item.field_key == "safety.neurological")
+    assert warning.status == FieldStatus.CONFIRMED
+    assert warning.normalized_value == {"present": True, "detected_by": "llm_semantic_screen"}
+    assert warning.requires_human_confirmation is True
+    assert warning.verbatim_text == "my right arm went weak an hour ago"
+
+
+async def test_unknown_proposed_category_is_discarded(state) -> None:
+    observations = await ResponseExtractor(
+        _ProposalLLM(["safety.invented", 42]), SAFETY_CATEGORIES
+    ).extract(
+        text="my arm went weak",
+        expected_field="symptom.onset",
+        state=state,
+    )
+    assert not any(item.field_key == "safety.invented" for item in observations)
+
+
+async def test_provider_does_not_duplicate_a_keyword_detection(state) -> None:
+    observations = await ResponseExtractor(
+        _ProposalLLM(["safety.neurological"]), SAFETY_CATEGORIES
+    ).extract(
+        text="我現在突然半邊無力",
+        expected_field="symptom.onset",
+        state=state,
+    )
+    neurological = [item for item in observations if item.field_key == "safety.neurological"]
+    assert len(neurological) == 1
+    assert neurological[0].normalized_value["present"] is True
+    assert "concepts" in neurological[0].normalized_value
+
+
+async def test_provider_does_not_add_a_second_observation_for_the_asked_field(state) -> None:
+    observations = await ResponseExtractor(
+        _ProposalLLM(["safety.cardiovascular"]), SAFETY_CATEGORIES
+    ).extract(
+        text="something feels off in my chest",
+        expected_field="safety.cardiovascular",
+        state=state,
+    )
+    assert len([item for item in observations if item.field_key == "safety.cardiovascular"]) == 1
+
+
 async def test_unmeasured_vitals_are_not_estimated(extractor, state) -> None:
     observations = await extractor.extract(
         text="我沒量血壓，大概一百三吧",
