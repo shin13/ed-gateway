@@ -8,6 +8,13 @@ from ed_gateway.application.configuration import load_clinical_config
 from ed_gateway.settings import Settings
 
 
+@pytest.fixture(autouse=True)
+def isolated_llm_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Importing chainlit loads the project .env into os.environ; settings tests must not inherit it."""
+    for name in ("LLM_PROVIDER", "LLM_MODEL", "LLM_BASE_URL", "LLM_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+
+
 def test_clinical_configuration_loads_and_has_twelve_safety_rules() -> None:
     config = load_clinical_config(Path(__file__).parents[2] / "config")
 
