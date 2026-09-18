@@ -66,6 +66,24 @@ def test_urgent_draft_requests_immediate_nurse_review(clinical_config, state) ->
     assert "WARN-NEUROLOGICAL" in draft.rendered_markdown
 
 
+def test_degraded_scan_is_flagged_for_manual_nurse_review(clinical_config, state) -> None:
+    state.safety_scan_degraded = ["my chest feels tight"]
+    draft = DraftGenerator(
+        clinical_config,
+        Path(__file__).parents[2] / "config" / "nurse-draft-template.md",
+    ).generate(state)
+    assert "未能執行" in draft.rendered_markdown
+    assert "my chest feels tight" in draft.rendered_markdown
+
+
+def test_review_points_are_unchanged_when_the_scan_ran(clinical_config, state) -> None:
+    draft = DraftGenerator(
+        clinical_config,
+        Path(__file__).parents[2] / "config" / "nurse-draft-template.md",
+    ).generate(state)
+    assert "未能執行" not in draft.rendered_markdown
+
+
 def test_draft_template_is_validated_at_startup(clinical_config, tmp_path: Path) -> None:
     invalid_template = tmp_path / "draft.md"
     invalid_template.write_text("# incomplete", encoding="utf-8")
