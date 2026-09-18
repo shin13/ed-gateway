@@ -6,8 +6,8 @@ _Last updated: 2026-09-18 — Session: multilingual safety detection_
 
 Multilingual safety detection is merged into `main` (`453583d`). The stack is running from merged
 `main` with `LLM_PROVIDER=openai_compatible` (`gpt-4.1-mini`), all three services healthy. Both
-feature branches were merged and deleted; `main` is the only branch. Unit suite green
-(73 passed, 1 skipped), ruff and mypy clean.
+feature branches were merged and deleted; `main` is the only branch, and it now tracks
+`origin/main` on private GitHub. Unit suite green (73 passed, 1 skipped), ruff and mypy clean.
 
 One test is **knowingly red** — see "Open Decision" below. No code work is in progress.
 
@@ -18,11 +18,17 @@ feedback on. This is the next session's whole job. It is deployment/operability 
 
 **Blockers, in the order they actually bite.** Each is verified against the current tree, not assumed:
 
-1. **No git remote.** Verified: `git remote -v` is empty, no branch has an upstream. Colleagues
-   cannot obtain the code at all, and today it exists on exactly one disk with no backup. This is
-   the first thing to fix. Other projects here push to ailab GitLab over HTTPS — reuse that, and
-   mind the two documented push failure modes (the `Expect:` header one, and the receive-pack size
-   limit).
+1. ~~**No git remote.**~~ **Resolved 2026-09-18.** `origin` is
+   `https://github.com/shin13/ed-gateway.git`, a **private** GitHub repository, and `main` tracks
+   `origin/main`. First push verified: remote `refs/heads/main` and local `HEAD` are both `addbec7`.
+   Pre-push audit found no secrets in the full history, no `.env` tracked (only placeholder
+   `.env.example`), and no 院內 hostnames or IPs in tracked files; `.git` is 1.3 MB over 72 tracked
+   files, well under any push size limit.
+
+   **Boundary this creates.** Unlike the other projects here, this repo is hosted outside 院內.
+   Real patient data, 院內 endpoints, and internal hostnames must never enter it — the reason the
+   first push was safe is that `GOAL.md` keeps all research material in `~/Downloads/` behind a
+   symlink, so no source document has ever been committed. Keep it that way.
 2. **Both ports bind to localhost only** — `docker-compose.yml:39,59` publish `127.0.0.1:8001` and
    `127.0.0.1:8000`. Nobody else on the network can reach a running instance. Two different shapes
    follow from this, and they need different work: (a) each colleague runs their own stack — needs
