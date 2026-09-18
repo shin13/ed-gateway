@@ -17,13 +17,15 @@ The domain core has no database dependency. `mock` mode is deterministic and off
 Docker Compose is the supported full-system path. Python and Node.js are not required on the host.
 
 ```bash
-cp .env.example .env
-# Replace POSTGRES_PASSWORD in .env. Keep LLM_PROVIDER=mock for the offline demo.
 docker compose up --build -d
 docker compose ps
 ```
 
 Open `http://127.0.0.1:8000`. Use synthetic demonstration data only.
+
+Every Compose variable has a default, so the offline demo needs no `.env` and runs in `mock` mode.
+Copy `.env.example` to `.env` only for a live provider or a different database password.
+[DEPLOYMENT.md](DEPLOYMENT.md) is the step-by-step setup for a colleague testing on their own machine.
 
 The API liveness and readiness endpoints are:
 
