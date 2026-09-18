@@ -14,6 +14,8 @@ The repository protocol separates the application layer from SQLAlchemy. Unit an
 
 Live LLM output is an extraction proposal, not an authority. Pydantic validation, deterministic safety rules, and deterministic draft rendering define the system behavior. Rule IDs are returned without hidden reasoning. The system does not store or expose chain-of-thought.
 
+Warning-sign detection runs in two layers. A deterministic sweep matches version-controlled Traditional Chinese phrases and always runs, with no provider dependency. Alongside it, the per-turn provider call screens the same categories semantically so a warning stated in another language is still detected. Provider proposals are whitelist-validated against the configured categories and are add-only: they may flag a category the deterministic sweep missed, never clear or downgrade one it found. `SafetyGate` consumes the merged observations and cannot tell which layer produced an entry, so escalation policy stays deterministic. A failed provider call degrades to deterministic-only screening for that turn and records the unscreened answer in the draft's nurse review points rather than raising an urgent prompt.
+
 ## Extension seams
 
 Future EHR retrieval, authenticated users, approved device measurements, and a patient simulator can attach through adapters without changing the interview state model. They are intentionally absent from the MVP.

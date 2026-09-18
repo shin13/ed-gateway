@@ -14,6 +14,8 @@
 - Preserve verbatim text separately from normalized values and always retain provenance.
 - A positive configured warning stops ordinary questions and requests immediate nurse review.
 - Safety ambiguity gets one direct clarification, then conservative escalation.
+- LLM warning-sign proposals are add-only: they may flag a category the deterministic keyword sweep
+  missed, never clear or downgrade one it found. See `docs/multilingual-safety-detection-design.md`.
 - Every draft must end with the required nurse-review disclaimer.
 - Use synthetic data only; never log raw interview messages to stdout.
 
@@ -31,4 +33,8 @@
 - Run `uv run pytest`, `uv run ruff check .`, `uv run mypy`, and `git diff --check`.
 - Use `docker compose up --build -d` for the supported full stack.
 - Keep `.env`, credentials, real patient data, and generated local state out of Git.
+- `POSTGRES_PASSWORD` is applied only when the database volume is first initialised. Changing it in
+  `.env` afterwards leaves the volume on the old password and `api` crash-loops with
+  `asyncpg.exceptions.InvalidPasswordError`. Either match the value the volume was created with, or
+  reset the volume deliberately with `docker compose down --volumes` (destroys demo data).
 - Update `STATE.md` with verified evidence and remaining boundaries before handoff.

@@ -4,146 +4,135 @@ _Last updated: 2026-09-18 — Session: multilingual safety detection_
 
 ## Status
 
-Multilingual safety detection is merged into `main` (`00c199d`, `--no-ff` merge of
-`feat/multilingual-safety-detection`). The stack was taken down and rebuilt from merged `main`;
-the named volume was preserved, so prior demo sessions and drafts survived (29 sessions, 19 drafts
-present after the rebuild). A live post-merge check confirmed an English warning sign still
-escalates via `detected_by: llm_semantic_screen`.
+Multilingual safety detection is merged into `main` (`453583d`). The stack is running from merged
+`main` with `LLM_PROVIDER=openai_compatible` (`gpt-4.1-mini`), all three services healthy. Both
+feature branches were merged and deleted; `main` is the only branch. Unit suite green
+(73 passed, 1 skipped), ruff and mypy clean.
 
-**One test is knowingly red on `main`** — see "Open Decision" below. Merged on the user's explicit
-instruction; the assertion was deliberately left untouched rather than weakened to force green.
+One test is **knowingly red** — see "Open Decision" below. No code work is in progress.
 
-Both feature branches are still present locally and were not deleted:
-`feat/multilingual-safety-detection` (now fully merged) and `fix/llm-respondent-type-crash`
-(fully merged since `817ff3d`).
+## NEXT PRIORITY — colleague-testable self-contained web app
 
-The local Docker Compose stack is running:
+Make ED Gateway something a colleague can host on their own machine via Docker, chat with, and give
+feedback on. This is the next session's whole job. It is deployment/operability work, not features.
 
-- Chainlit: `http://127.0.0.1:8000`
-- FastAPI/OpenAPI: `http://127.0.0.1:8001/docs`
-- PostgreSQL: internal Compose network only, named volume retained
-- Current provider: `openai_compatible` (`gpt-4.1-mini` via the configured endpoint), validated live
+**Blockers, in the order they actually bite.** Each is verified against the current tree, not assumed:
 
-## Multilingual Safety Detection — Live Evidence (2026-09-18)
+1. **No git remote.** Verified: `git remote -v` is empty, no branch has an upstream. Colleagues
+   cannot obtain the code at all, and today it exists on exactly one disk with no backup. This is
+   the first thing to fix. Other projects here push to ailab GitLab over HTTPS — reuse that, and
+   mind the two documented push failure modes (the `Expect:` header one, and the receive-pack size
+   limit).
+2. **Both ports bind to localhost only** — `docker-compose.yml:39,59` publish `127.0.0.1:8001` and
+   `127.0.0.1:8000`. Nobody else on the network can reach a running instance. Two different shapes
+   follow from this, and they need different work: (a) each colleague runs their own stack — needs
+   the repo, Docker, an `.env`, and their own LLM credentials; or (b) one shared host — needs the
+   binding opened, which must not happen before item 3.
+3. **No authentication whatsoever.** Verified: no auth callback anywhere in
+   `src/ed_gateway/chainlit_ui/`. Anyone who can reach the port can start an interview. Acceptable
+   while bound to localhost; unacceptable the moment the binding opens.
+4. **Synthetic-data-only is a notice, not a control.** `CLAUDE.md` requires synthetic data only, and
+   the UI shows 「研究展示用途」, but nothing prevents a colleague from typing real patient details
+   into a hospital-adjacent tool. Decide deliberately how this is enforced or accepted before
+   inviting testers. This is the highest-consequence item, even though it is not the first blocker.
+5. **Secret distribution is undefined.** `.env` is correctly gitignored (`.gitignore:1`) and
+   `.env.example` is committed, but there is no documented way to hand a colleague a working
+   `LLM_API_KEY` / `LLM_BASE_URL`. Also unverified: whether the configured LLM endpoint is even
+   reachable from a colleague's machine, or only from inside 院內 network.
+6. **The `POSTGRES_PASSWORD` trap will hit every new tester.** Postgres applies that variable only
+   when the data directory is first initialised; changing it later leaves the volume on the old
+   password and `api` crash-loops with `InvalidPasswordError`. This cost real time on 2026-09-04
+   and is currently documented nowhere. It belongs in the setup instructions.
+7. **No feedback capture in the product.** Collecting feedback is the stated purpose, yet the only
+   mechanism is `docs/live-validation-checklist.md`, a manual template. Decide whether feedback
+   goes in-app or stays a form colleagues fill in by hand.
+8. **Multi-user behaviour is unevidenced.** Concurrency and idempotency were already outside the
+   MVP's evidence, and several colleagues chatting at once is exactly that untested case.
+9. **Images are untagged.** `api` and `web` are `build: .` with no `image:` tag, so there is no
+   versioned artifact and no rollback target. Worth fixing before anyone else depends on an
+   instance.
 
-Design: `docs/multilingual-safety-detection-design.md`. Plan: `docs/multilingual-safety-detection-plan.md`.
+Suggested first step next session: decide between shape (a) per-colleague local stack and
+shape (b) one shared host, because almost everything above branches on that single choice.
+Shape (a) is far less work and avoids items 2, 3, and most of 8.
 
-The 12 warning categories now have a second detection layer. The per-turn provider call also
-screens the other categories semantically, in any language; the Chinese keyword sweep is unchanged
-and still runs first. Proposals are whitelist-validated and add-only: they can flag a category the
-keyword layer missed but can never clear one it found. `SafetyGate` was not touched.
+## Open Decision — failing compose smoke test
 
-Verified live against the real provider, not only by unit test:
-
-- **English warning during an unrelated question** — while the age question was being asked,
-  `"I am 40, and my left arm suddenly went weak"` escalated: `200`, phase `ESCALATED`,
-  `WARN-NEUROLOGICAL`. The draft observation carries
-  `{"present": true, "detected_by": "llm_semantic_screen"}` with the English verbatim text and
-  `requires_human_confirmation: true` — so the new layer, not the keyword sweep, produced it.
-- **Chinese baseline unchanged** — `"我現在突然半邊無力"` still escalates with `WARN-NEUROLOGICAL`.
-- **No false escalation** — `"I am 34 years old"` and `"我34歲"` both advance normally,
-  `safety_status: PENDING`, no triggered rules.
-- **Degraded path exercised live**, not just in tests: a one-off API container pointed at an
-  unreachable provider (`LLM_BASE_URL=http://127.0.0.1:9/v1`) against the real database. Turns
-  returned `200` and the interview advanced normally, and the draft's 【護理師覆核重點】 listed both
-  unscreened answers verbatim for manual review. Before this change that first turn was a 500:
-  `orchestrator.py:79` had no exception handling around the extractor call, so any provider
-  timeout or connection failure crashed the turn. That defect is now closed and regression-tested.
-- Gates: 73 passed / 1 skipped, `ruff check .` clean, `mypy` clean on 26 source files.
-- `api` logs contain no tracebacks and zero occurrences of the interview text used in these runs,
-  so the no-raw-messages-to-stdout invariant still holds.
-
-### Open Decision — failing compose smoke test (blocks a fully green suite)
-
-`tests/smoke/test_compose.py:28` asserts that 「胸痛還冒冷汗」 triggers exactly
-`["WARN-CARDIOVASCULAR"]`. It now returns `["WARN-CARDIOVASCULAR", "WARN-CIRCULATION"]`, so the
-test fails. Traced to the layer, not guessed:
+`tests/smoke/test_compose.py:28` asserts 「胸痛還冒冷汗」 triggers exactly `["WARN-CARDIOVASCULAR"]`.
+It now returns `["WARN-CARDIOVASCULAR", "WARN-CIRCULATION"]`. Traced to the layer:
 
 - `safety.cardiovascular` → keyword layer, `{"detail": "胸痛還冒冷汗", "present": true}`
 - `safety.circulation` → semantic layer, `{"present": true, "detected_by": "llm_semantic_screen"}`
 
 The model mapped 冒冷汗 to the circulation category's `cold clammy skin` concept. The Chinese
-keyword list for circulation contains 皮膚冰冷、臉色蒼白、快昏倒、眼前發黑、心悸又無力 but not
-冒冷汗, so the keyword layer never caught it. Escalation behaviour is unchanged — still
-`ESCALATED`, ordinary questioning still stops, still immediate nurse review. The only difference
-is the nurse sees two categories instead of one.
+keyword list for circulation has 皮膚冰冷、臉色蒼白、快昏倒、眼前發黑、心悸又無力 but not 冒冷汗, so
+the keyword layer never caught it. Escalation behaviour is unchanged — still `ESCALATED`, ordinary
+questioning still stops. The nurse just sees two categories instead of one.
 
-Two questions, both unresolved:
+Two unresolved questions: **(1) engineering** — should the assertion become containment
+(`"WARN-CARDIOVASCULAR" in triggered`), since the test's job is proving the escalation path, not
+that exactly one rule fires? Left unchanged deliberately, because the trigger for changing it was a
+behaviour change introduced in the same work. **(2) clinical** — should 冒冷汗 flag circulation at
+all? Not an engineering call; belongs with `docs/open-clinical-decisions.md`.
 
-1. **Engineering:** should the smoke assertion become containment (`"WARN-CARDIOVASCULAR" in
-   triggered`)? The test's purpose is proving the escalation path works end to end, not that
-   exactly one rule fires. Not changed unilaterally, because the trigger for the change was a
-   behaviour change introduced in the same work.
-2. **Clinical:** should 冒冷汗 flag the circulation category at all? Not an engineering call.
-   Belongs with `docs/open-clinical-decisions.md`.
-
-Related discovery worth recording: this feature is **not only multilingual**. It also catches
-Chinese phrasings the hardcoded keyword list misses, which is wider than the scope the design
-described. Beneficial on its face, but it was not the approved scope and needs a decision.
-
-### Residual scope for this feature
-
-- The English `detection_concepts_en` wording is a working translation with **no clinical or
-  bilingual review**; recorded as item 10 in `docs/open-clinical-decisions.md`.
-- **No per-language evaluation was run.** Languages are covered only as well as `gpt-4.1-mini`
-  covers them. Only English and Traditional Chinese were exercised; nothing else was tested.
-- The Chinese phrase lists remain hardcoded in `extractor.py` rather than versioned in `config/`,
-  which still contradicts the architecture note in `CLAUDE.md`. Unchanged and still open.
-- Other non-safety fields still accept whatever shape a provider proposes, apart from
-  `respondent.type`. No crash is known there, but no exhaustive live testing has been done.
+Related discovery: the feature is **not only multilingual**. It also catches Chinese phrasings the
+hardcoded keyword list misses — wider than the approved scope, arguably beneficial, still undecided.
 
 ## What Was Done This Session
 
-- Built the complete Chainlit → FastAPI → shared interview engine → PostgreSQL → nurse-draft flow.
-- Added versioned schemas, questions, 12-category safety rules, context rules, deterministic drafts, migrations, Docker Compose, and engineering documentation.
-- Added clause-aware safety interpretation, explicit missing/unknown/refused states, provenance, contradiction clarification, provider-neutral LLM extraction, and raw-message-first persistence.
-- Verified normal completion, partial completion, warning escalation, four shared-engine complaint fixtures, browser rendering, PostgreSQL storage, and persistence across api/web restart.
+- Diagnosed the reported "stiff dialogue / doesn't understand English" complaint to root cause:
+  `mock` provider does no interpretation at all, and `extractor.py`'s detection is pure Traditional
+  Chinese keyword matching.
+- Fixed a live-provider crash (`respondent.type` enum coercion) with dual-layer validation, TDD.
+- Designed, planned, implemented, and live-verified multilingual safety detection across 6 TDD
+  tasks. Design: `docs/multilingual-safety-detection-design.md`. Plan:
+  `docs/multilingual-safety-detection-plan.md`.
+- Closed a pre-existing defect found along the way: the extractor call in `orchestrator.py` had no
+  exception handling, so any provider timeout or connection failure crashed the turn with a 500.
 
 ## Decisions Made
 
-- The Downloads research directory remains read-only; this repository is the only code source of truth.
-- A live LLM may propose normalized extraction, but Pydantic validation, deterministic safety rules, and deterministic drafts remain authoritative.
-- Safety-positive findings stop ordinary questioning; unresolved safety ambiguity gets one clarification and then conservative nurse escalation.
-- The AI never assigns TTAS level, diagnoses, recommends treatment, estimates missing measurements, or submits a final hospital record.
-- Manual validation must use synthetic data. Mock-functional, live-provider, clinical, and production evidence remain separate claims.
+- **LLM detects, deterministic rules decide.** The 12 categories and all escalation policy stay in
+  versioned config and `SafetyGate`; the provider only proposes detections.
+- **Add-only asymmetric trust.** A proposal may flag a category the keyword sweep missed, never
+  clear or downgrade one it found. A wrong model costs a redundant flag, never a suppressed warning.
+- **One LLM call per turn**, extending the existing call rather than adding a second one.
+- **Provider failure degrades quietly** (option B1): keyword-only screening for that turn plus a
+  nurse-review note in the draft — not the urgent banner, because a network fault carries no
+  clinical signal and a false urgent screen has its own on-site cost.
+- **English concept wording lives in `config/safety-rules.yaml`**, not hardcoded, so clinical
+  reviewers can change it without a code change.
+- Merged to `main` with one knowingly-red smoke test rather than weakening the assertion to force
+  green.
 
 ## Verified Evidence
 
-- Commit `18dcd50` — `feat: build ED Gateway research MVP`.
-- `uv run pytest`: 58 passed; 1 Compose smoke skipped when no running URL is configured.
-- Running-stack smoke: 1 passed against the real Compose API and PostgreSQL.
-- Ruff, mypy for 26 source files, and `git diff --check`: passed.
-- Final `docker compose ps`: db, api, and web are healthy.
-- Browser observation: research notice, exact first question, both actions, complete Markdown draft, and structured JSON side view rendered.
-- Restart proof retained session `29d9dc20-5c53-42db-8601-efd8d8b8e020` and draft revision 1.
+- Merge `00c199d` (`--no-ff`), state record `453583d`. Feature commits `1ada9bd`…`32823d9`.
+- Unit suite on the merged result: 73 passed, 1 skipped. Ruff clean. Mypy clean, 26 source files.
+- English warning during an unrelated question → `ESCALATED`, `WARN-NEUROLOGICAL`, observation
+  carries `detected_by: llm_semantic_screen` with the English verbatim text and
+  `requires_human_confirmation: true`.
+- Chinese baseline unchanged; `"I am 34 years old"` and `"我34歲"` do not falsely escalate.
+- Degraded path exercised live, not only in tests: a one-off API container pointed at
+  `LLM_BASE_URL=http://127.0.0.1:9/v1` against the real database returned `200`, advanced the
+  interview, and listed both unscreened answers in 【護理師覆核重點】.
+- Data survived the down/rebuild cycle: 29 sessions, 19 drafts.
+- `api` logs contain no tracebacks and none of the interview text used in these runs.
 
-## In Progress / Incomplete
+## Known Issues / Residual Scope
 
-- User synthetic live validation and feedback have not yet occurred.
-- The OpenAI-compatible provider path is implemented but has not been exercised with a live endpoint.
-- Clinical validity, institutional workflow fit, privacy controls, security review, multi-user concurrency/idempotency, and production deployment are outside current evidence.
-
-## Known Issues / Blockers
-
-- **[FIXED, commit `2eee3cc`, merged `817ff3d`] Crash on `openai_compatible` provider: unvalidated LLM proposal breaks `respondent.type` enum coercion.**
-  - Discovered 2026-09-04 during the user's first live validation pass, after configuring a real `LLM_PROVIDER=openai_compatible` endpoint (previously only `mock` had been exercised).
-  - Repro: create a session, answer the first question ("現在操作的是病人本人，還是家屬或陪同者？") in English, e.g. `"I am the patient myself."` via `POST /api/v1/interview-sessions/{id}/messages`.
-  - Observed: `HTTP 500`. Traceback bottoms out at `domain/models.py:120` — `self.respondent_type = RespondentType(observation.normalized_value)` raises `ValueError: 'patient self-report' is not a valid RespondentType`. The LLM correctly understood the English input semantically (`normalized_value="patient self-report"`), but `extractor.py::_provider_observation()` forwards the provider's free-form value into `Observation.normalized_value` for non-safety fields without validating it against the field's expected enum contract, and `merge_observation()` performs the enum coercion with no `try/except`.
-  - Blast radius checked: grepped every consumer of `normalized_value` (`planner.py`, `drafts.py`, `safety.py`) — all other sites already guard with `isinstance` checks. `domain/models.py:120` is the only unguarded coercion.
-  - Not caught by the existing 58-test suite because `MockLLMClient.extract()` never returns a `classification`/`status`, so `_provider_observation()` always short-circuits to `None` in mock mode — this path is only reachable with a real LLM provider.
-  - Safety impact: none directly (this is the respondent-identity field, not a safety-warning field), but it is a full request crash mid-interview, and it demonstrates the same class of risk could reach other non-safety fields if their expected shape is ever violated by a live LLM's output. `openai_compatible` should be treated as **not validated for live use** until this is fixed.
-  - Fix (branch `fix/llm-respondent-type-crash`, TDD, merged into `main`): (1) `extractor.py::_provider_observation` now validates `normalized_value` against the field's allowed values for `respondent.type`; rejects anything outside `{"PATIENT","CAREGIVER"}` and falls back to `NEEDS_CLARIFICATION` instead of trusting free-form provider output. (2) `domain/models.py::merge_observation` wraps the `RespondentType(...)` coercion in `try/except`, downgrading to `NEEDS_CLARIFICATION` + `requires_human_confirmation=True` on failure instead of raising, as defense-in-depth for any future caller.
-  - Verified: new unit tests for both layers (red before the fix, green after); full suite (60 passed, 1 skipped), ruff, and mypy all clean; re-ran the exact crashing scenario against the real Compose stack + live LLM endpoint afterward — now `200 OK` with the question re-asked, no traceback in `api` logs.
-  - Residual scope not covered by this fix: this only hardens `respondent.type`. Other non-safety fields (e.g. `symptom.severity`, vitals) still accept whatever shape a live LLM proposes without field-specific validation — no crash risk confirmed there yet (their consumers already guard with `isinstance`), but not exhaustively load-tested against a live provider either. The 12-category safety-warning detection remains entirely keyword-based and still has zero English-language coverage (see conversation this session) — that is unchanged by this fix and still open.
-- Clinical governance questions remain in `docs/open-clinical-decisions.md`.
-- Production requirements remain in `docs/privacy-and-production-gaps.md`.
-
-## Next Steps
-
-1. Follow `docs/live-validation-checklist.md` using synthetic scenarios only; first record whether validation uses the current mock provider or an approved live provider.
-2. For each issue, capture the scenario, exact synthetic answer sequence, expected behavior, actual behavior, approximate UTC/local time, and a screenshot when useful. Never include credentials or real patient data.
-3. In the next coding session, begin by reading `CLAUDE.md`, this file, and the validation feedback; reproduce each issue before revising code.
+- The failing smoke test above.
+- English `detection_concepts_en` wording has **no clinical or bilingual review** — item 10 in
+  `docs/open-clinical-decisions.md`.
+- **No per-language evaluation was run.** Only English and Traditional Chinese were exercised.
+- Chinese phrase lists remain hardcoded in `extractor.py` rather than versioned in `config/`, still
+  contradicting the architecture note in `CLAUDE.md`.
+- Non-safety fields other than `respondent.type` still accept any shape a provider proposes. No
+  crash known; consumers guard with `isinstance`; not exhaustively tested live.
 
 ## Context for Next Session
 
-Start from commit `18dcd50` on `codex/build-ed-gateway-mvp`. The stack was left running and the database volume was not reset. Re-check `git status`, `docker compose ps`, `/health/ready`, and the configured `LLM_PROVIDER` before treating old runtime state as current.
+Start from `453583d` on `main`. Re-check `git status`, `docker compose ps`, `/health/ready`, and the
+configured `LLM_PROVIDER` before trusting any of the runtime state above — the stack was left
+running but Docker Desktop does not survive a reboot, and `docker compose` fails with
+`failed to connect to the docker API` until it is started.

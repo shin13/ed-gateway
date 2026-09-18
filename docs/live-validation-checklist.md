@@ -15,6 +15,7 @@ Use this checklist to validate the running research MVP before the next revision
 - [ ] Early completion: finish before answering and verify all missing fields, including 12 safety categories, are listed.
 - [ ] Immediate warning: report current chest pain/tightness or sudden one-sided weakness and verify ordinary questions stop, immediate nurse assistance is prominent, the triggering wording is preserved, and no diagnosis or TTAS level appears.
 - [ ] Safety ambiguity: give an unclear warning answer twice and verify one direct clarification occurs before conservative escalation.
+- [ ] Non-Chinese warning (requires a live provider): while a non-safety question is being asked, answer with a warning sign in another language, for example `I am 40, and my left arm suddenly went weak`. Verify ordinary questions stop, the draft observation shows `detected_by: llm_semantic_screen`, the original wording is preserved verbatim, and the entry is marked as needing human confirmation. In `mock` mode this scenario is expected to fail; record which provider was used.
 - [ ] Contradiction: confirm and then deny the same non-terminal field; verify the system asks once for clarification and preserves the conflict in the draft.
 - [ ] Draft review: verify every required section, UTC update time, verbatim chief complaint, normalized data, source labels, missing data, contradictions, fixed nurse-only triage-level text, JSON side view, and final disclaimer.
 - [ ] New session: use 「開始新的合成展示」 and verify the previous draft does not leak into the new browser session.
