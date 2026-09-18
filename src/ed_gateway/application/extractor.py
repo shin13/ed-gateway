@@ -52,6 +52,14 @@ SAFETY_CONCEPTS: dict[str, tuple[str, ...]] = {
 }
 
 
+class SafetyScanDegraded(Exception):
+    """The provider call failed, so this turn was screened by the keyword layer only."""
+
+    def __init__(self, partial_observations: list[Observation]) -> None:
+        super().__init__("multilingual safety screen unavailable for this turn")
+        self.partial_observations = partial_observations
+
+
 def _source_for(state: InterviewState) -> InformationSource:
     if state.respondent_type == RespondentType.CAREGIVER:
         return InformationSource.CAREGIVER_STATEMENT
@@ -198,15 +206,20 @@ class ResponseExtractor:
             observations.append(expected)
 
         # The provider may resolve an otherwise ambiguous field. Safety-negative proposals never clear a warning.
-        proposal = await self._llm.extract(
-            text=text,
-            expected_field=expected_field,
-            context={
-                "respondent_type": state.respondent_type.value,
-                "classification": classification,
-                "safety_categories": self._safety_categories,
-            },
-        )
+        try:
+            proposal = await self._llm.extract(
+                text=text,
+                expected_field=expected_field,
+                context={
+                    "respondent_type": state.respondent_type.value,
+                    "classification": classification,
+                    "safety_categories": self._safety_categories,
+                },
+            )
+        except Exception as error:
+            # Deliberately broad: any provider error must degrade to keyword-only screening
+            # rather than reach the respondent as a failed turn.
+            raise SafetyScanDegraded(observations) from error
         provider_observation = self._provider_observation(
             proposal=proposal,
             text=text,

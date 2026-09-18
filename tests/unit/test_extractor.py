@@ -1,6 +1,7 @@
+import httpx
 import pytest
 
-from ed_gateway.application.extractor import ResponseExtractor
+from ed_gateway.application.extractor import ResponseExtractor, SafetyScanDegraded
 from ed_gateway.domain.models import FieldStatus, InformationSource, RespondentType
 from ed_gateway.llm.mock import MockLLMClient
 
@@ -264,6 +265,22 @@ async def test_provider_does_not_add_a_second_observation_for_the_asked_field(st
         state=state,
     )
     assert len([item for item in observations if item.field_key == "safety.cardiovascular"]) == 1
+
+
+async def test_provider_failure_raises_with_local_observations(state) -> None:
+    class FailingLLM:
+        async def extract(self, **_kwargs):
+            raise httpx.ConnectError("provider unreachable")
+
+    with pytest.raises(SafetyScanDegraded) as caught:
+        await ResponseExtractor(FailingLLM(), SAFETY_CATEGORIES).extract(
+            text="我現在突然半邊無力",
+            expected_field="symptom.onset",
+            state=state,
+        )
+
+    fields = {item.field_key for item in caught.value.partial_observations}
+    assert "safety.neurological" in fields
 
 
 async def test_unmeasured_vitals_are_not_estimated(extractor, state) -> None:
