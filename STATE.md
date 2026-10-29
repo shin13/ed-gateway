@@ -1,14 +1,41 @@
 # ED Gateway State
 
-_Last updated: 2026-09-18 — Session: colleague-testable local deployment_
+_Last updated: 2026-10-29 — Session: restore local web connectivity_
 
 ## Status
 
-`main` is at `d6beb50` and in sync with `origin/main` on private GitHub. The stack runs from `main`
-with `LLM_PROVIDER=openai_compatible` (`gpt-4.1-mini`), all three services healthy on image
-`ed-gateway:0.1.0`. Unit suite green (84 passed, 1 skipped), ruff and mypy clean.
+This change records the web repair below, based on `main` at `362c4f9`.
+All three services are healthy; the API reports
+`LLM_PROVIDER=openai_compatible` (`gpt-4.1-mini`). The frontend is now at
+`http://127.0.0.1:8002`; the API remains at `http://127.0.0.1:8001`.
 
-One test is **knowingly red** — see "Open Decision" below. No code work is in progress.
+The previously failing live smoke assertion remains unresolved — see "Open Decision" below.
+It was not rerun during this session.
+
+## Verified: local web repair, 2026-10-29
+
+- Found `web` running with no Docker network attachment or effective host port mapping. Its local
+  HTTP check passed, but `http://api:8001/health/ready` failed DNS resolution. During inspection,
+  port 8000 was occupied by another project's API. The cause of the detached network is unknown.
+- With user authorization, changed the published web port to `127.0.0.1:8002:8000`, added explicit
+  localhost origins for port 8002, and documented the new URL. Container port 8000 is unchanged.
+- Extended the web health check to probe both the local page and API readiness, so a disconnected
+  web container no longer passes solely because its own page is reachable.
+- Ran `docker compose build web`, then
+  `docker compose up -d --no-deps --force-recreate --wait --wait-timeout 60 web` successfully.
+  Only the web container was recreated. API and database container IDs are unchanged; no volumes
+  were removed and no other project's containers were changed.
+- Verified all three services healthy, web attached to `ed-gateway_default`, host port 8002 HTTP
+  200, API liveness/readiness HTTP 200, and web-to-API readiness with the database available.
+  Socket.IO polling handshake with origin `http://127.0.0.1:8002` succeeded. The in-app browser
+  rendered the safety notice, respondent question, and draft/export/new-session buttons.
+- The new web image is `7a447e7dfbbc`; the API still runs its existing image `6b70b2cf5881`.
+  Both use tag `ed-gateway:0.1.0`, but currently have different image IDs. Rebuilding web moved the
+  shared tag; the running API container was not replaced.
+- Verification: 84 tests passed / 1 smoke deselected, including a repeat before commit; after the
+  repair, 3 focused UI tests also passed. Ruff passed, mypy passed over 27 source files, and
+  `git diff --check` passed.
+  No live-model conversation, clinical evaluation, or clean-clone acceptance was performed.
 
 ## Decided: per-colleague local stack (shape a)
 
@@ -17,7 +44,7 @@ Nothing is hosted on a shared machine. This closes the localhost-binding, authen
 concurrency questions by avoiding them rather than solving them; reopen all three before any shared
 host is considered.
 
-### Delivered this session
+### Delivered in the previous deployment session, 2026-09-18
 
 - **`DEPLOYMENT.md`** — the colleague-facing setup guide: offline demo, full mode with their own key,
   how to send feedback, and the traps below.
@@ -41,7 +68,7 @@ host is considered.
    only because `GOAL.md` keeps all research material in `~/Downloads/` behind a symlink, so no
    source document has ever been committed. Keep it that way.
 2. **Ports bind to localhost only** — `docker-compose.yml` publishes `127.0.0.1:8001` and
-   `127.0.0.1:8000`. Under shape (a) this is the intended design, not a defect.
+   `127.0.0.1:8002`. Under shape (a) this is the intended design, not a defect.
 3. **No authentication.** Acceptable while bound to localhost. Blocking for any shared host.
 4. **Synthetic-data-only is still a notice, not a control.** `DEPLOYMENT.md` and the UI both say it
    in the strongest wording available, but nothing prevents a colleague from typing real patient
@@ -78,7 +105,7 @@ Two unresolved questions: **(1) engineering** — should the assertion become co
 that exactly one rule fires? **(2) clinical** — should 冒冷汗 flag circulation at all? Not an
 engineering call; belongs with `docs/open-clinical-decisions.md`.
 
-## Verified Evidence — this session
+## Verified Evidence — previous deployment session, 2026-09-18
 
 - Clean `git clone` from GitHub into an empty directory, with **no `.env`**, reached three healthy
   services, `/health/ready` reporting `llm: mock`, Chainlit HTTP 200, and a three-turn interview
@@ -111,9 +138,10 @@ engineering call; belongs with `docs/open-clinical-decisions.md`.
 
 ## Context for Next Session
 
-Start from `d6beb50` on `main`. Re-check `git status`, `docker compose ps`, `/health/ready` and the
-configured `LLM_PROVIDER` before trusting any runtime state above — Docker Desktop does not survive a
-reboot, and `docker compose` fails with `failed to connect to the docker API` until it is started.
+Start from the latest `main` containing the web repair above. Re-check `git status`,
+`docker compose ps`, `/health/ready`, and the configured `LLM_PROVIDER` before trusting runtime
+state. The web URL is now `http://127.0.0.1:8002`. Preserve the running API, database volume,
+and unrelated projects when making further deployment changes.
 
 First job: the clean-clone acceptance run listed under Known Issues. It needs the local stack stopped,
-because both use ports 8000 and 8001.
+because both use ports 8002 and 8001.

@@ -6,7 +6,7 @@ It is not a medical device, diagnosis system, treatment recommender, or autonomo
 
 ## Architecture
 
-- `web`: Chainlit adapter at `http://127.0.0.1:8000`. It creates sessions, forwards one answer at a time, and renders the draft plus a side-panel JSON view.
+- `web`: Chainlit adapter at `http://127.0.0.1:8002` (container port 8000). It creates sessions, forwards one answer at a time, and renders the draft plus a side-panel JSON view. Its health check verifies both the local page and API readiness.
 - `api`: FastAPI at `http://127.0.0.1:8001`. It owns extraction, state transitions, safety rules, question selection, persistence, and draft generation. OpenAPI is at `/docs`.
 - `db`: PostgreSQL 16 on the internal Compose network with a named volume.
 
@@ -21,7 +21,7 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Open `http://127.0.0.1:8000`. Use synthetic demonstration data only.
+Open `http://127.0.0.1:8002`. Use synthetic demonstration data only.
 
 Every Compose variable has a default, so the offline demo needs no `.env` and runs in `mock` mode.
 Copy `.env.example` to `.env` only for a live provider or a different database password.

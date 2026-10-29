@@ -20,7 +20,7 @@ docker compose up --build -d
 docker compose ps
 ```
 
-All three services should say `healthy`. Open <http://127.0.0.1:8000>.
+All three services should say `healthy`. Open <http://127.0.0.1:8002>.
 
 The first build takes a few minutes. After that it starts in seconds.
 
@@ -79,7 +79,8 @@ full-mode feedback never get mixed up.
 Change it later and `api` will crash-loop with `InvalidPasswordError`. Either keep the old value, or
 run `docker compose down --volumes` on purpose. That deletes the demo data.
 
-**The ports are on `127.0.0.1` on purpose.** Only your machine can reach the app. There is no login,
+**The ports are on `127.0.0.1` on purpose.** The chat uses port 8002 and the API uses port 8001.
+Only your machine can reach the app. There is no login,
 so do not open these ports to a network.
 
 **Stopping is safe. Resetting is not.**
